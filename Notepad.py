@@ -16,8 +16,6 @@ from aqt.qt import *
 from anki.hooks import wrap
 from aqt.reviewer import Reviewer
 
-#write something that wraps question business?
-#like as soon as its pulled up, add <input>, then remove when goes to answer
 """
 class Notepad(object):
 

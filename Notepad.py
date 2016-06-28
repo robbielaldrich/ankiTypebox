@@ -20,8 +20,8 @@ from aqt.reviewer import Reviewer
 def npRenderQA(self, data, qfmt=None, afmt=None):
     d = origRenderQA(self, data, qfmt, afmt)
 
-    #CUSTOM CODE
-    d['q'] += ("<br/><input>")
+    d['q'] += ("<br/><br/>")
+    d['q'] += ("<textarea rows=4 cols=50/>")
     return d
 
 # anki/collection.py
@@ -38,10 +38,27 @@ def keyHandler(self, evt, _old):
 		elif notepad_bool == 1:
 			notepad_bool = 0
 			_Collection._renderQA = origRenderQA
+		if self.state == "question":
+			# reset card, pulled from onSave() (aqt/editcurrent.py)
+			r = self.mw.reviewer
+			try:
+				r.card.load()
+			except:
+				# card was removed by clayout
+				pass
+			else:
+				r.cardQueue.append(r.card)
+			self.mw.moveToState("review")
 	else: 
 		return _old(self, evt)
 
-
-
 Reviewer._keyHandler = wrap(Reviewer._keyHandler, keyHandler, "around")
+
+"""
+a = QAction(mw)
+a.setText("Toggle Notepad")
+a.setShortcut(notepad_shortcut)
+mw.form.menuTools.addAction(a)
+mw.connect(a, SIGNAL("triggered()"), toggleNotepad)
+"""
 

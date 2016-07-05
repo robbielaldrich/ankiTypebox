@@ -22,43 +22,52 @@ def npRenderQA(self, data, qfmt=None, afmt=None):
 
     d['q'] += ("<br/><br/>")
     d['q'] += ("<textarea rows=4 cols=50/>")
+    """
+    d['q'] += ("<script>")
+    d['q'] += ("$(document).delegate('#textbox', 'keydown', function(e){")
+    d['q'] += ("var keyCode = e.keyCode || e.which;")
+    d['q'] += ("if (keyCode == 9) {")
+    d['q'] += ("e.preventDefault();")
+    d['q'] += ("var start = $(this).get(0).selectionStart;")
+    d['q'] += ("var end = $(this).get(0).selectionEnd;")
+    d['q'] += ("$(this).val($(this).val().substring(0, start)+'\t'+ $(this).val().substring(end));")
+    d['q'] += ("$(this).get(0).selectionStart = $(this).get(0).selectionEnd = start + 1;} });")
+     d['q'] += ("</script>")
+    """
     return d
 
 # anki/collection.py
 # _renderQA(data, *args) called by _getQA() in anki/cards.py
 origRenderQA = _Collection._renderQA
 
-def keyHandler(self, evt, _old):
+def toggleNotepad():
 	global notepad_bool
-	key = unicode(evt.text())
-	if key == notepad_shortcut:
-		if notepad_bool == 0:
-			notepad_bool = 1
-			_Collection._renderQA = npRenderQA
-		elif notepad_bool == 1:
-			notepad_bool = 0
-			_Collection._renderQA = origRenderQA
-		if self.state == "question":
-			# reset card, pulled from onSave() (aqt/editcurrent.py)
-			r = self.mw.reviewer
-			try:
-				r.card.load()
-			except:
-				# card was removed by clayout
-				pass
-			else:
-				r.cardQueue.append(r.card)
-			self.mw.moveToState("review")
-	else: 
-		return _old(self, evt)
+	if notepad_bool == 0:
+		notepad_bool = 1
+		_Collection._renderQA = npRenderQA
+	elif notepad_bool == 1:
+		notepad_bool = 0
+		_Collection._renderQA = origRenderQA
+	if mw.state == "overview" or mw.state == "deckBrowser":# or mw.state = "overview":
+		return
+	elif mw.reviewer.state == "question":
+		# reset card, pulled from onSave() (aqt/editcurrent.py)
+		r = mw.reviewer
+		try:
+			r.card.load()
+		except:
+			# card was removed by clayout
+			pass
+		else:
+			r.cardQueue.append(r.card)
+		mw.moveToState("review")
 
-Reviewer._keyHandler = wrap(Reviewer._keyHandler, keyHandler, "around")
+#Reviewer._keyHandler = wrap(Reviewer._keyHandler, keyHandler, "around")
+def showState():
+	showInfo(mw.state)
 
-"""
 a = QAction(mw)
 a.setText("Toggle Notepad")
 a.setShortcut(notepad_shortcut)
 mw.form.menuTools.addAction(a)
 mw.connect(a, SIGNAL("triggered()"), toggleNotepad)
-"""
-

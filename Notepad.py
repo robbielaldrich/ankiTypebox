@@ -1,11 +1,10 @@
 notepad_shortcut = '|'
-notepad_on_start = 0 #switch to 1 for notepad by default
-notepad_bool = notepad_on_start
+notepad_on_start = 0 #set to 1 for notepad on by default
 
 """If find problem, email at robbielaldrich@gmail.com"""
 
 __addon_name__ = "Notepad"
-__version__ = "0.0"
+__version__ = "1.0"
 
 # import the main window object (mw) from aqt
 from aqt import mw
@@ -22,23 +21,30 @@ def npRenderQA(self, data, qfmt=None, afmt=None):
 
     d['q'] += ("<br/><br/>")
     d['q'] += ("<textarea rows=4 cols=50/>")
-    """
-    d['q'] += ("<script>")
-    d['q'] += ("$(document).delegate('#textbox', 'keydown', function(e){")
-    d['q'] += ("var keyCode = e.keyCode || e.which;")
-    d['q'] += ("if (keyCode == 9) {")
-    d['q'] += ("e.preventDefault();")
-    d['q'] += ("var start = $(this).get(0).selectionStart;")
-    d['q'] += ("var end = $(this).get(0).selectionEnd;")
-    d['q'] += ("$(this).val($(this).val().substring(0, start)+'\t'+ $(this).val().substring(end));")
-    d['q'] += ("$(this).get(0).selectionStart = $(this).get(0).selectionEnd = start + 1;} });")
-     d['q'] += ("</script>")
-    """
+    
+    d['q'] += r'''<script>
+	    document.querySelector("textarea").addEventListener('keydown',function(e) {
+	    	if(e.keyCode === 9) { 
+	        	var start = this.selectionStart;
+	        	var end = this.selectionEnd;
+
+	        	var target = e.target;
+	        	var value = target.value;
+	        	target.value = value.substring(0, start)
+	                    + "\t" + "\t" + "\t" + "\t"
+	                    + value.substring(end);
+	        	this.selectionStart = this.selectionEnd = start + 4;
+	        	e.preventDefault();
+	    	}
+		},false);
+	</script>'''
     return d
 
-# anki/collection.py
+# from anki/collection.py
 # _renderQA(data, *args) called by _getQA() in anki/cards.py
 origRenderQA = _Collection._renderQA
+
+notepad_bool = notepad_on_start
 
 def toggleNotepad():
 	global notepad_bool
@@ -48,7 +54,7 @@ def toggleNotepad():
 	elif notepad_bool == 1:
 		notepad_bool = 0
 		_Collection._renderQA = origRenderQA
-	if mw.state == "overview" or mw.state == "deckBrowser":# or mw.state = "overview":
+	if mw.state == "overview" or mw.state == "deckBrowser":
 		return
 	elif mw.reviewer.state == "question":
 		# reset card, pulled from onSave() (aqt/editcurrent.py)
@@ -61,10 +67,6 @@ def toggleNotepad():
 		else:
 			r.cardQueue.append(r.card)
 		mw.moveToState("review")
-
-#Reviewer._keyHandler = wrap(Reviewer._keyHandler, keyHandler, "around")
-def showState():
-	showInfo(mw.state)
 
 a = QAction(mw)
 a.setText("Toggle Notepad")

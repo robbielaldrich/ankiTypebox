@@ -1,64 +1,121 @@
-notepad_shortcut = '|'
+notepad_shortcut = '|' #choose whichever hotkey you like!
 notepad_on_start = 0 #set to 1 for notepad on by default
-notepad_dimensions = (4,50) #set desired dimensions of the notepad
 
-"""If you find a problem, please email robbielaldrich@gmail.com. Thanks!"""
+"""
+If you encounter a problem, please email robbielaldrich@gmail.com. 
+Thanks!
+"""
 
 __addon_name__ = "Notepad"
 __version__ = "1.0"
 
 from aqt import mw
 from aqt.qt import *
-from anki.collection import _Collection
-from aqt.reviewer import Reviewer 
+from aqt.reviewer import Reviewer
+from aqt.utils import showInfo
 
-def npRenderQA(self, data, qfmt=None, afmt=None):
-    d = origRenderQA(self, data, qfmt, afmt)
+orig_revHtml = Reviewer._revHtml
 
-    d['q'] += ("<br/><br/>")
-    d['q'] += ("<textarea rows=" + str(notepad_dimensions[0]) + " cols=" + str(notepad_dimensions[1]) +"/>")
-    
-    d['q'] += r'''<script>
-	    document.querySelector("textarea").addEventListener('keydown',function(e) {
-	    	if(e.keyCode === 9) { 
-	        	var start = this.selectionStart;
-	        	var end = this.selectionEnd;
-
-	        	var target = e.target;
-	        	var value = target.value;
-	        	target.value = value.substring(0, start)
-	                    + "\t" + "\t" + "\t" + "\t"
-	                    + value.substring(end);
-	        	this.selectionStart = this.selectionEnd = start + 4;
-	        	e.preventDefault();
-	    	}
-		},false);
-	</script>'''
-    return d
-
-# from anki/collection.py
-# _renderQA(data, *args) called by _getQA() in anki/cards.py
-origRenderQA = _Collection._renderQA
-
-notepad_bool = notepad_on_start
+notepad_bool = 0
+if notepad_on_start:
+	toggleNotepad()
 
 def toggleNotepad():
 	global notepad_bool
 	if notepad_bool == 0:
 		notepad_bool = 1
-		_Collection._renderQA = npRenderQA
+		w = str( mw.width() - 45 )
+		h = str( mw.height() / 4 )
+		if int(w) > 600: w = '600'
+
+		# from aqt/reviewer.py 
+		# _showQuestion() and _showAnswer() call _updateQA() in _revHtml
+		# answerMode == 0 if showing question, 1 if showing answer
+		# q argument in _updateQA() is either question HTML or answer HTML
+		np_revHtml = """
+<img src="qrc:/icons/rating.png" id=star class=marked>
+<div id=qa></div>
+<script>
+var ankiPlatform = "desktop";
+var typeans;
+function _updateQA (q, answerMode, klass) {
+
+	//--BEGIN NOTEPAD CODE--------
+	//q += "<textarea id=qNotepad rows=" + npRows + " cols=" + npCols + "/>";
+	if (!answerMode){
+		q += "<br/>";
+		q += "<textarea id=qNotepad style='width:""" + w + """px;height:""" + h + """px;right:10px;position:relative;'/>";
+	}
+    var typed = $("#qNotepad").val();
+    if (answerMode && typed) {
+    	q += "<br/><br/>";
+    	q += "<textarea id=aNotepad style='width:""" + w + """px;height:""" + h + """px;right:10px;position:relative;'px/>";
+    }
+    //--END NOTEPAD CODE--------
+
+    $("#qa").html(q);
+
+    //--BEGIN NOTEPAD CODE--------
+    if (answerMode && typed) {
+        $("#aNotepad").val(typed);
+    }
+
+    // allow tabbing within textarea 
+    $("textarea").keydown(function(e) {
+	    if(e.keyCode === 9) {
+	        var start = this.selectionStart;
+	        var end = this.selectionEnd;
+	        var $this = $(this);
+	        var value = $this.val();
+	        $this.val(value.substring(0, start)
+	                    + "\t" + "\t" + "\t" + "\t"
+	                    + value.substring(end));
+	        this.selectionStart = this.selectionEnd = start + 4;
+	        e.preventDefault();
+	    }
+	});
+	//--END NOTEPAD CODE--------
+
+    typeans = document.getElementById("typeans");
+    if (typeans) {
+        typeans.focus();
+    }
+    if (answerMode) {
+        var e = $("#answer");
+        if (e[0]) { e[0].scrollIntoView(); }
+    } else {
+        window.scrollTo(0, 0);
+    }
+    if (klass) {
+        document.body.className = klass;
+    }
+    // don't allow drags of images, which cause them to be deleted
+    $("img").attr("draggable", false);
+};
+function _toggleStar (show) {
+    if (show) {
+        $(".marked").show();
+    } else {
+        $(".marked").hide();
+    }
+}
+function _typeAnsPress() {
+    if (window.event.keyCode === 13) {
+        pycmd("ans");
+    }
+}
+</script>
+"""
+		Reviewer._revHtml = np_revHtml
 	elif notepad_bool == 1:
 		notepad_bool = 0
-		_Collection._renderQA = origRenderQA
-	if mw.state == "overview" or mw.state == "deckBrowser":
-		return
-	elif mw.reviewer.state == "question":
-		# reset card, code from onSave() (aqt/editcurrent.py)
+		Reviewer._revHtml = orig_revHtml
+	if mw.state == "review" and mw.reviewer.state == "question":
+		# reset card; code from onSave() (aqt/editcurrent.py)
 		r = mw.reviewer
 		try:
 			r.card.load()
 		except:
-			# card was removed by clayout
 			pass
 		else:
 			r.cardQueue.append(r.card)

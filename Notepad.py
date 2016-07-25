@@ -12,7 +12,6 @@ __version__ = "1.0"
 from aqt import mw
 from aqt.qt import *
 from aqt.reviewer import Reviewer
-from aqt.utils import showInfo
 
 orig_revHtml = Reviewer._revHtml
 
@@ -26,7 +25,7 @@ def toggleNotepad():
 		notepad_bool = 1
 		w = str( mw.width() - 45 )
 		h = str( mw.height() / 4 )
-		if int(w) > 600: w = '600'
+		if int(w) > 650: w = '650'
 
 		# from aqt/reviewer.py 
 		# _showQuestion() and _showAnswer() call _updateQA() in _revHtml
@@ -39,23 +38,22 @@ def toggleNotepad():
 var ankiPlatform = "desktop";
 var typeans;
 function _updateQA (q, answerMode, klass) {
-
-	//--BEGIN NOTEPAD CODE--------
-	//q += "<textarea id=qNotepad rows=" + npRows + " cols=" + npCols + "/>";
+	
 	if (!answerMode){
 		q += "<br/>";
-		q += "<textarea id=qNotepad style='width:""" + w + """px;height:""" + h + """px;right:10px;position:relative;'/>";
+		q += "<textarea id=qNotepad style='width:""" + w + """px;height:""" + h + """px;position:relative;'/>";
 	}
     var typed = $("#qNotepad").val();
     if (answerMode && typed) {
-    	q += "<br/><br/>";
-    	q += "<textarea id=aNotepad style='width:""" + w + """px;height:""" + h + """px;right:10px;position:relative;'px/>";
+    	// if card is not a cloze, should line break
+    	if (q.search('cloze') == -1){
+    	    q += "<br/><br/>";
+    	}
+    	q += "<textarea id=aNotepad style='width:""" + w + """px;height:""" + h + """px;position:relative;'px/>";
     }
-    //--END NOTEPAD CODE--------
 
     $("#qa").html(q);
 
-    //--BEGIN NOTEPAD CODE--------
     if (answerMode && typed) {
         $("#aNotepad").val(typed);
     }
@@ -74,12 +72,12 @@ function _updateQA (q, answerMode, klass) {
 	        e.preventDefault();
 	    }
 	});
-	//--END NOTEPAD CODE--------
 
     typeans = document.getElementById("typeans");
     if (typeans) {
         typeans.focus();
     }
+
     if (answerMode) {
         var e = $("#answer");
         if (e[0]) { e[0].scrollIntoView(); }
@@ -92,6 +90,7 @@ function _updateQA (q, answerMode, klass) {
     // don't allow drags of images, which cause them to be deleted
     $("img").attr("draggable", false);
 };
+
 function _toggleStar (show) {
     if (show) {
         $(".marked").show();
@@ -99,9 +98,15 @@ function _toggleStar (show) {
         $(".marked").hide();
     }
 }
+
+function _getTypedText () {
+    if (typeans) {
+        py.link("typeans:"+typeans.value);
+    }
+};
 function _typeAnsPress() {
     if (window.event.keyCode === 13) {
-        pycmd("ans");
+        py.link("ansHack");
     }
 }
 </script>

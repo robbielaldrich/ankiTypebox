@@ -1,83 +1,69 @@
-notepad_shortcut = '|' #choose whichever hotkey you like!
-notepad_on_start = 0 #set to 1 for notepad on by default
-
-"""
-If you encounter a problem, please email robbielaldrich@gmail.com. 
-Thanks!
-"""
-
-__addon_name__ = "Notepad"
+__addon_name__ = "Typebox"
 __version__ = "1.0"
 
-from aqt import mw
-from aqt.qt import *
+from anki.hooks import addHook
 from aqt.reviewer import Reviewer
 
-orig_revHtml = Reviewer._revHtml
+"""
+Replaces {{typebox:}} with textarea. See anki/template/template, 
+Template.render_unescaped for filter that finds 'fmod_' hooks.
+"""
+def Typebox(txt, extra, context, tag, fullname):
+    return """<textarea id=typebox></textarea>"""
 
-notepad_bool = 0
-if notepad_on_start:
-	toggleNotepad()
+addHook('fmod_typebox', Typebox)
 
-def toggleNotepad():
-	global notepad_bool
-	if notepad_bool == 0:
-		notepad_bool = 1
-		w = str( mw.width() - 45 )
-		h = str( mw.height() / 4 )
-		if int(w) > 650: w = '650'
-
-		# from aqt/reviewer.py 
-		# _showQuestion() and _showAnswer() call _updateQA() in _revHtml
-		# answerMode == 0 if showing question, 1 if showing answer
-		# q argument in _updateQA() is either question HTML or answer HTML
-		np_revHtml = """
+"""
+np_revHTML gets entered value from typebox before answer
+is shown and sets the typebox post-answer with that value. 
+Also enables tab functionality within textareas.
+"""
+np_revHtml = """
 <img src="qrc:/icons/rating.png" id=star class=marked>
 <div id=qa></div>
 <script>
 var ankiPlatform = "desktop";
 var typeans;
 function _updateQA (q, answerMode, klass) {
-	
-	if (!answerMode){
-		q += "<br/>";
-		q += "<textarea id=qNotepad style='width:""" + w + """px;height:""" + h + """px;position:relative;'/>";
-	}
-    var typed = $("#qNotepad").val();
-    if (answerMode && typed) {
-    	// if card is not a cloze, should line break
-    	if (q.search('cloze') == -1){
-    	    q += "<br/><br/>";
-    	}
-    	q += "<textarea id=aNotepad style='width:""" + w + """px;height:""" + h + """px;position:relative;'px/>";
-    }
-
+    
+    // Begin Typebox code -----------
+    //get guess from typebox, if exists
+    var typed = $("#typebox").val();
+    
+    //---Default Anki code----
     $("#qa").html(q);
+    //------------------------
 
-    if (answerMode && typed) {
-        $("#aNotepad").val(typed);
+    
+    //Note (inlcuding question) has been rewritten,
+    //so if something was entered into typebox in 
+    //queston mode, set typebox value to that in 
+    //answer mode.
+    
+    if (typed && answerMode) {
+        $("#typebox").val(typed);
     }
 
     // allow tabbing within textarea 
     $("textarea").keydown(function(e) {
-	    if(e.keyCode === 9) {
-	        var start = this.selectionStart;
-	        var end = this.selectionEnd;
-	        var $this = $(this);
-	        var value = $this.val();
-	        $this.val(value.substring(0, start)
-	                    + "\t" + "\t" + "\t" + "\t"
-	                    + value.substring(end));
-	        this.selectionStart = this.selectionEnd = start + 4;
-	        e.preventDefault();
-	    }
-	});
+        if(e.keyCode === 9) {
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+            var $this = $(this);
+            var value = $this.val();
+            $this.val(value.substring(0, start)
+                        + "\t" + "\t" + "\t" + "\t"
+                        + value.substring(end));
+            this.selectionStart = this.selectionEnd = start + 4;
+            e.preventDefault();
+        }
+    });
+	// End Typebox code -------------
 
     typeans = document.getElementById("typeans");
     if (typeans) {
         typeans.focus();
     }
-
     if (answerMode) {
         var e = $("#answer");
         if (e[0]) { e[0].scrollIntoView(); }
@@ -90,7 +76,6 @@ function _updateQA (q, answerMode, klass) {
     // don't allow drags of images, which cause them to be deleted
     $("img").attr("draggable", false);
 };
-
 function _toggleStar (show) {
     if (show) {
         $(".marked").show();
@@ -98,7 +83,6 @@ function _toggleStar (show) {
         $(".marked").hide();
     }
 }
-
 function _getTypedText () {
     if (typeans) {
         py.link("typeans:"+typeans.value);
@@ -111,23 +95,5 @@ function _typeAnsPress() {
 }
 </script>
 """
-		Reviewer._revHtml = np_revHtml
-	elif notepad_bool == 1:
-		notepad_bool = 0
-		Reviewer._revHtml = orig_revHtml
-	if mw.state == "review" and mw.reviewer.state == "question":
-		# reset card; code from onSave() (aqt/editcurrent.py)
-		r = mw.reviewer
-		try:
-			r.card.load()
-		except:
-			pass
-		else:
-			r.cardQueue.append(r.card)
-		mw.moveToState("review")
 
-a = QAction(mw)
-a.setText("Toggle Notepad")
-a.setShortcut(notepad_shortcut)
-mw.form.menuTools.addAction(a)
-mw.connect(a, SIGNAL("triggered()"), toggleNotepad)
+Reviewer._revHtml = np_revHtml

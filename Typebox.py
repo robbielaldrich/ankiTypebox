@@ -58,7 +58,7 @@ function _updateQA (q, answerMode, klass) {
             e.preventDefault();
         }
     });
-	// End Typebox code -------------
+    // End Typebox code -------------
 
     typeans = document.getElementById("typeans");
     if (typeans) {

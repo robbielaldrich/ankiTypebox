@@ -1,99 +1,95 @@
-__addon_name__ = "Typebox"
-__version__ = "1.0"
+import html.parser
+import re
 
-from anki.hooks import addHook
 from aqt.reviewer import Reviewer
+from anki.utils import stripHTML
 
-"""
-Replaces {{typebox:}} with textarea. See anki/template/template, 
-Template.render_unescaped for filter that finds 'fmod_' hooks.
-"""
-def Typebox(txt, extra, context, tag, fullname):
-    return """<textarea id=typebox></textarea>"""
 
-addHook('fmod_typebox', Typebox)
+Reviewer.typeboxAnsPat = r"\[\[type:box:(.+?)\]\]"
 
-"""
-np_revHTML gets entered value from typebox before answer
-is shown and sets the typebox post-answer with that value. 
-Also enables tab functionality within textareas.
-"""
-np_revHtml = """
-<img src="qrc:/icons/rating.png" id=star class=marked>
-<div id=qa></div>
-<script>
-var ankiPlatform = "desktop";
-var typeans;
-function _updateQA (q, answerMode, klass) {
-    
-    // Begin Typebox code -----------
-    //get guess from typebox, if exists
-    var typed = $("#typebox").val();
-    
-    //---Default Anki code----
-    $("#qa").html(q);
-    //------------------------
 
-    
-    //Note (inlcuding question) has been rewritten,
-    //so if something was entered into typebox in 
-    //queston mode, set typebox value to that in 
-    //answer mode.
-    
-    if (typed && answerMode) {
-        $("#typebox").val(typed);
-    }
+def typeboxAnsFilter(self, buf: str) -> str:
+    if self.state == "question":
+        typebox_replaced = self.typeboxAnsQuestionFilter(buf)
+    else:
+        typebox_replaced = self.typeboxAnsAnswerFilter(buf)
+    if typebox_replaced != buf:
+        return typebox_replaced
 
-    // allow tabbing within textarea 
-    $("textarea").keydown(function(e) {
-        if(e.keyCode === 9) {
-            var start = this.selectionStart;
-            var end = this.selectionEnd;
-            var $this = $(this);
-            var value = $this.val();
-            $this.val(value.substring(0, start)
-                        + "\t" + "\t" + "\t" + "\t"
-                        + value.substring(end));
-            this.selectionStart = this.selectionEnd = start + 4;
-            e.preventDefault();
-        }
-    });
-    // End Typebox code -------------
+    if self.state == "question":
+        return self.typeAnsQuestionFilter(buf)
+    return self.typeAnsAnswerFilter(buf)
 
-    typeans = document.getElementById("typeans");
-    if (typeans) {
-        typeans.focus();
-    }
-    if (answerMode) {
-        var e = $("#answer");
-        if (e[0]) { e[0].scrollIntoView(); }
-    } else {
-        window.scrollTo(0, 0);
-    }
-    if (klass) {
-        document.body.className = klass;
-    }
-    // don't allow drags of images, which cause them to be deleted
-    $("img").attr("draggable", false);
-};
-function _toggleStar (show) {
-    if (show) {
-        $(".marked").show();
-    } else {
-        $(".marked").hide();
-    }
-}
-function _getTypedText () {
-    if (typeans) {
-        py.link("typeans:"+typeans.value);
-    }
-};
-function _typeAnsPress() {
-    if (window.event.keyCode === 13) {
-        py.link("ansHack");
-    }
-}
-</script>
-"""
 
-Reviewer._revHtml = np_revHtml
+def typeboxAnsQuestionFilter(self, buf: str) -> str:
+    m = re.search(self.typeboxAnsPat, buf)
+    if not m:
+        return buf
+    fld = m.group(1)
+    # loop through fields for a match
+    for f in self.card.model()["flds"]:
+        if f["name"] == fld:
+            # get field value and style details
+            self.typeCorrect = self.card.note()[f["name"]]
+            self.typeFont = f["font"]
+            self.typeSize = f["size"]
+            break
+
+    if not self.typeCorrect:
+        if self.typeCorrect is None:
+            warn = _("Type answer: unknown field %s") % fld
+            return re.sub(self.typeboxAnsPat, warn, buf)
+        # empty field, remove typebox answer pattern
+        return re.sub(self.typeboxAnsPat, "", buf)
+
+    return re.sub(
+        self.typeboxAnsPat,
+        """
+<center>
+<textarea id=typeans style="font-family: '%s'; font-size: %spx;"></textarea>
+</center>
+    """
+        % (self.typeFont, self.typeSize),
+        buf,
+    )
+
+
+def typeboxAnsAnswerFilter(self, buf: str) -> str:
+    if not self.typeCorrect:
+        return re.sub(self.typeboxAnsPat, "", buf)
+    origSize = len(buf)
+    buf = buf.replace("<hr id=answer>", "")
+    hadHR = len(buf) != origSize
+    # munge correct value
+    parser = html.parser.HTMLParser()
+    cor = self.mw.col.media.strip(self.typeCorrect)
+    cor = re.sub("(\n|<br ?/?>|</?div>)+", "__newline__", cor)
+    cor = stripHTML(cor)
+    # ensure we don't chomp multiple whitespace
+    cor = cor.replace(" ", "&nbsp;")
+    cor = parser.unescape(cor)
+    cor = cor.replace("\xa0", " ")
+    cor = cor.replace("__newline__", "\n")
+    cor = cor.strip()
+    given = self.typedAnswer
+    # compare with typed answer
+    res = self.correct(given, cor, showBad=False)
+
+    # and update the type answer area
+    s = """
+<pre style="text-align:left; font-family: '%s'; font-size: %spx">%s</pre>""" % (
+        self.typeFont,
+        self.typeSize,
+        res,
+    )
+    if hadHR:
+        # a hack to ensure the q/a separator falls before the answer
+        # comparison when user is using {{FrontSide}}
+        s = "<hr id=answer>" + s
+    return re.sub(self.typeAnsPat, s, buf)
+
+
+Reviewer.typeAnsFilter = typeboxAnsFilter
+Reviewer.typeboxAnsQuestionFilter = typeboxAnsQuestionFilter
+Reviewer.typeboxAnsAnswerFilter = typeboxAnsAnswerFilter
+

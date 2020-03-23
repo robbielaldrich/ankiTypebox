@@ -5,12 +5,9 @@ An addon for Anki Spaced Repetition Software (http://ankisrs.net. Why: https://w
 
 After installing, try it by adding a new note type (maybe cloned from "Type") with these settings...
 
-Front template:
-
-{{Front}}
-
+Front template:\
+{{Front}}\
 {{type:box:Back}}
 
-Back template:
-
+Back template:\
 {{FrontSide}}

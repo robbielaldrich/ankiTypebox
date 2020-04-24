@@ -1,6 +1,6 @@
 import html.parser
 import re
-
+from . import tinycss
 from aqt.reviewer import Reviewer
 from anki.utils import stripHTML
 
@@ -31,8 +31,9 @@ def typeboxAnsQuestionFilter(self, buf: str) -> str:
     fields = self.card.model()["flds"]
     for f in fields:
         if f["name"] == fld:
-            # get field value and style details
+            # get field value for correcting
             self.typeCorrect = self.card.note()[f["name"]]
+            # get font/font size from field
             self.typeFont = f["font"]
             self.typeSize = f["size"]
             break
@@ -40,11 +41,25 @@ def typeboxAnsQuestionFilter(self, buf: str) -> str:
         maybe_answer_field = next((f for f in fields if f == "Back"), fields[-1])
         self.typeFont = maybe_answer_field["font"]
         self.typeSize = maybe_answer_field["size"]
+
+    # ".card" styling should overwrite font/font size, as it does for the rest of the card
+    if self.card.model()["css"] and self.card.model()["css"].strip():
+        parser = tinycss.make_parser("page3")
+        style = parser.parse_stylesheet(self.card.model()["css"])
+        card_style = next(
+            (r for r in style.rules if "".join([t.value for t in r.selector]) == ".card"), None)
+        if card_style:
+            for declaration in card_style.declarations:
+                if declaration.name == "font-family":
+                    self.typeFont = "".join([t.value for t in declaration.value])
+                if declaration.name == "font-size":
+                    self.typeSize = "".join([str(t.value) for t in declaration.value])
+
     return re.sub(
         self.typeboxAnsPat,
         """
 <center>
-<textarea id=typeans onkeypress="typeboxAns();" style="font-family: '%s'; font-size: %spx;"></textarea>
+<textarea id=typeans class=textbox-input onkeypress="typeboxAns();" style="font-family: '%s'; font-size: %spx;"></textarea>
 </center>
 <script>
 function typeboxAns() {
@@ -83,10 +98,15 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
         res = self.typedAnswer
 
     # and update the type answer area
+    font_family = "font-family: '%s';" % self.typeFont if hasattr(self, "typeFont") else ""
+    font_size = "font-size: %spx" % self.typeSize if hasattr(self, "typeSize") else ""
     s = """
-<pre style="text-align:left; font-family: '%s'; font-size: %spx">%s</pre>""" % (
-        self.typeFont,
-        self.typeSize,
+<div class=textbox-output-parent>    
+<pre class=textbox-output style="%s%s">%s</pre>
+</div>
+""" % (
+        font_family,
+        font_size,
         res,
     )
     if hadHR:

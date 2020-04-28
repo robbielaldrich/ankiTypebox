@@ -11,7 +11,7 @@
 from __future__ import unicode_literals
 
 import pytest
-from typebox_tinycss.color3 import hsl_to_rgb, parse_color_string
+from tinycss.color3 import hsl_to_rgb, parse_color_string
 
 
 @pytest.mark.parametrize(('css_source', 'expected_result'), [

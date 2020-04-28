@@ -14,7 +14,7 @@ import os
 import sys
 
 import pytest
-from typebox_tinycss.tokenizer import (
+from tinycss.tokenizer import (
     cython_tokenize_flat, python_tokenize_flat, regroup)
 
 

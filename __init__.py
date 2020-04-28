@@ -1,6 +1,6 @@
 import html.parser
 import re
-from . import typebox_tinycss
+from . import tinycss
 from aqt.reviewer import Reviewer
 from anki.utils import stripHTML
 
@@ -22,8 +22,9 @@ def typeboxAnsFilter(self, buf: str) -> str:
 
 
 def _set_font_details_from_card(reviewer, style, selector):
+    selector_rules = [r for r in style.rules if hasattr(r, "selector")]
     card_style = next(
-        (r for r in style.rules if "".join([t.value for t in r.selector]) == selector), None)
+        (r for r in selector_rules if "".join([t.value for t in r.selector]) == selector), None)
     if card_style:
         for declaration in card_style.declarations:
             if declaration.name == "font-family":
@@ -55,7 +56,7 @@ def typeboxAnsQuestionFilter(self, buf: str) -> str:
 
     # ".card" styling should overwrite font/font size, as it does for the rest of the card
     if self.card.model()["css"] and self.card.model()["css"].strip():
-        parser = typebox_tinycss.make_parser("page3")
+        parser = tinycss.make_parser("page3")
         parsed_style = parser.parse_stylesheet(self.card.model()["css"])
         _set_font_details_from_card(self, parsed_style, ".card")
         _set_font_details_from_card(self, parsed_style, ".textbox-input")
@@ -104,7 +105,7 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
 
     # and update the type answer area
     if self.card.model()["css"] and self.card.model()["css"].strip():
-        parser = typebox_tinycss.make_parser("page3")
+        parser = tinycss.make_parser("page3")
         parsed_style = parser.parse_stylesheet(self.card.model()["css"])
         _set_font_details_from_card(self, parsed_style, ".textbox-output-parent")
         _set_font_details_from_card(self, parsed_style, ".textbox-output")

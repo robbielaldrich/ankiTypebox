@@ -11,7 +11,7 @@
 from __future__ import unicode_literals
 
 import pytest
-from typebox_tinycss.page3 import CSSPage3Parser
+from tinycss.page3 import CSSPage3Parser
 
 from . import assert_errors
 from .test_tokenizer import jsonify

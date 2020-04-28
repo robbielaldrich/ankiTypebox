@@ -15,7 +15,7 @@ import os
 import tempfile
 
 import pytest
-from typebox_tinycss.css21 import CSS21Parser
+from tinycss.css21 import CSS21Parser
 
 from . import assert_errors
 from .test_tokenizer import jsonify

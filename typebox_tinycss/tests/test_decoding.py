@@ -11,7 +11,7 @@
 from __future__ import unicode_literals
 
 import pytest
-from tinycss.decoding import decode
+from typebox_tinycss.decoding import decode
 
 
 def params(css, encoding, use_bom=False, expect_error=False, **kwargs):

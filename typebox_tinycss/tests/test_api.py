@@ -11,8 +11,8 @@
 from __future__ import unicode_literals
 
 from pytest import raises
-from tinycss import make_parser
-from tinycss.page3 import CSSPage3Parser
+from typebox_tinycss import make_parser
+from typebox_tinycss.page3 import CSSPage3Parser
 
 
 def test_make_parser():

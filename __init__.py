@@ -1,6 +1,6 @@
 import html.parser
 import re
-from . import tinycss
+from . import typebox_tinycss
 from aqt.reviewer import Reviewer
 from anki.utils import stripHTML
 
@@ -19,6 +19,17 @@ def typeboxAnsFilter(self, buf: str) -> str:
     if self.state == "question":
         return self.typeAnsQuestionFilter(buf)
     return self.typeAnsAnswerFilter(buf)
+
+
+def _set_font_details_from_card(reviewer, style, selector):
+    card_style = next(
+        (r for r in style.rules if "".join([t.value for t in r.selector]) == selector), None)
+    if card_style:
+        for declaration in card_style.declarations:
+            if declaration.name == "font-family":
+                reviewer.typeFont = "".join([t.value for t in declaration.value])
+            if declaration.name == "font-size":
+                reviewer.typeSize = "".join([str(t.value) for t in declaration.value])
 
 
 def typeboxAnsQuestionFilter(self, buf: str) -> str:
@@ -44,16 +55,10 @@ def typeboxAnsQuestionFilter(self, buf: str) -> str:
 
     # ".card" styling should overwrite font/font size, as it does for the rest of the card
     if self.card.model()["css"] and self.card.model()["css"].strip():
-        parser = tinycss.make_parser("page3")
-        style = parser.parse_stylesheet(self.card.model()["css"])
-        card_style = next(
-            (r for r in style.rules if "".join([t.value for t in r.selector]) == ".card"), None)
-        if card_style:
-            for declaration in card_style.declarations:
-                if declaration.name == "font-family":
-                    self.typeFont = "".join([t.value for t in declaration.value])
-                if declaration.name == "font-size":
-                    self.typeSize = "".join([str(t.value) for t in declaration.value])
+        parser = typebox_tinycss.make_parser("page3")
+        parsed_style = parser.parse_stylesheet(self.card.model()["css"])
+        _set_font_details_from_card(self, parsed_style, ".card")
+        _set_font_details_from_card(self, parsed_style, ".textbox-input")
 
     return re.sub(
         self.typeboxAnsPat,
@@ -98,6 +103,11 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
         res = self.typedAnswer
 
     # and update the type answer area
+    if self.card.model()["css"] and self.card.model()["css"].strip():
+        parser = typebox_tinycss.make_parser("page3")
+        parsed_style = parser.parse_stylesheet(self.card.model()["css"])
+        _set_font_details_from_card(self, parsed_style, ".textbox-output-parent")
+        _set_font_details_from_card(self, parsed_style, ".textbox-output")
     font_family = "font-family: '%s';" % self.typeFont if hasattr(self, "typeFont") else ""
     font_size = "font-size: %spx" % self.typeSize if hasattr(self, "typeSize") else ""
     s = """

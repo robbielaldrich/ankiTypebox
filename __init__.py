@@ -112,8 +112,14 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
     font_family = "font-family: '%s';" % self.typeFont if hasattr(self, "typeFont") else ""
     font_size = "font-size: %spx" % self.typeSize if hasattr(self, "typeSize") else ""
     s = """
-<div class=textbox-output-parent>    
-<pre class=textbox-output style="%s%s">%s</pre>
+<div class=textbox-output-parent>
+<style>
+pre {
+   white-space:pre-wrap;
+   %s%s 
+}
+</style>    
+<pre class=textbox-output>%s</pre>
 </div>
 """ % (
         font_family,

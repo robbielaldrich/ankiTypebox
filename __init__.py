@@ -1,4 +1,4 @@
-import html.parser
+import html
 import re
 from . import tinycss
 from aqt.reviewer import Reviewer
@@ -86,20 +86,14 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
     given = self.typedAnswer
     # compare with typed answer
     if self.typeCorrect:
-        # munge correct value
-        parser = html.parser.HTMLParser()
         cor = self.mw.col.media.strip(self.typeCorrect)
-        cor = re.sub("(\n|<br ?/?>|</?div>)+", "__newline__", cor)
+        cor = re.sub(r"(<div>)+", "__typeboxnewline__", cor)
         cor = stripHTML(cor)
-        # ensure we don't chomp multiple whitespace
-        cor = cor.replace(" ", "&nbsp;")
-        cor = parser.unescape(cor)
+        cor = html.unescape(cor)
         cor = cor.replace("\xa0", " ")
-        cor = cor.replace("__newline__", "\n")
+        cor = cor.replace("__typeboxnewline__", "\n")
         cor = cor.strip()
-
         res = self.correct(given, cor, showBad=False)
-
     else:
         res = self.typedAnswer
 
@@ -136,4 +130,3 @@ pre {
 Reviewer.typeAnsFilter = typeboxAnsFilter
 Reviewer.typeboxAnsQuestionFilter = typeboxAnsQuestionFilter
 Reviewer.typeboxAnsAnswerFilter = typeboxAnsAnswerFilter
-

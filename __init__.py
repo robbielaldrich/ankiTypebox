@@ -85,18 +85,11 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
 	given = self.typedAnswer
 
 	if self.typeCorrect:
-		# compare with typed answer
+		# compare with typed answera
 		# before stripping anki's added html, add newline markers to preserve format
 		cor = self.mw.col.media.strip(self.typeCorrect)
 		newline_marker = "__typeboxnewline__"
-		if "<pre>" in cor:
-			# field val contains pasted text, which only uses <br> to signify newline
-			pre_starts = re.finditer(r"(<pre>)", cor)
-			pre_ends = re.finditer(r"(</pre>)", cor)
-			for s, e in zip(pre_starts, pre_ends):
-				cor = cor[:s.start()] + re.sub(r"<br>",
-											   newline_marker,
-											   cor[s.start():e.end()]) + cor[e.end():]
+		cor = re.sub(r"(<div><br>|<br>)", newline_marker, cor)
 		cor = re.sub(r"(<div>)+", newline_marker, cor)
 		cor = re.sub(r"(\r\n|\n)", newline_marker, cor)
 		cor = stripHTML(cor)

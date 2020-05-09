@@ -85,7 +85,7 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
 	given = self.typedAnswer
 
 	if self.typeCorrect:
-		# compare with typed answera
+		# compare with typed answer
 		# before stripping anki's added html, add newline markers to preserve format
 		cor = self.mw.col.media.strip(self.typeCorrect)
 		newline_marker = "__typeboxnewline__"

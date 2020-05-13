@@ -9,8 +9,9 @@ Reviewer.typeboxAnsPat = r"\[\[typebox:(.*?)\]\]"
 
 def typeboxAnsFilter(self, buf: str) -> str:
 	# replace the typebox pattern for questions, and if question has typebox,
-	# 	update answer
+	# 	use custom answer logic
 	if self.state == "question":
+		self._typebox_note = False
 		typebox_replaced = self.typeboxAnsQuestionFilter(buf)
 
 		if typebox_replaced != buf:

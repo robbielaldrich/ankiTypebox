@@ -3,6 +3,8 @@ import re
 from . import tinycss
 from aqt.reviewer import Reviewer
 from anki.utils import stripHTML
+from aqt import gui_hooks
+from aqt import mw
 
 Reviewer.typeboxAnsPat = r"\[\[typebox:(.*?)\]\]"
 
@@ -138,6 +140,19 @@ pre {
 	return re.sub(self.typeboxAnsPat, s, buf)
 
 
+def focusTypebox(card):
+    """
+    Tell UI to autofocus on the typebox when the card has typebox in it.
+    Anki does this by checking whether mw.reviewer.typeCorrect is truthy, but
+    that doesn't cover cases such as when [[typebox:]] is used by itself
+    without an answer field or when the answer field is empty. This function
+    fixes that.
+    """
+    if hasattr(mw.reviewer, "_typebox_note") and mw.reviewer._typebox_note:
+        mw.web.setFocus()
+
+
+gui_hooks.reviewer_did_show_question.append(focusTypebox)
 Reviewer.typeAnsFilter = typeboxAnsFilter
 Reviewer.typeboxAnsQuestionFilter = typeboxAnsQuestionFilter
 Reviewer.typeboxAnsAnswerFilter = typeboxAnsAnswerFilter

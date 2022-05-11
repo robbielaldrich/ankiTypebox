@@ -14,7 +14,6 @@
 """
 
 from __future__ import division, unicode_literals
-
 import collections
 import itertools
 import re
@@ -206,7 +205,7 @@ BASIC_COLOR_KEYWORDS = [
     ('fuchsia', (255, 0, 255)),
     ('green', (0, 128, 0)),
     ('lime', (0, 255, 0)),
-    ('olive', (128, 128, 0)),
+    ('olive', (128, 0, 0)),
     ('yellow', (255, 255, 0)),
     ('navy', (0, 0, 128)),
     ('blue', (0, 0, 255)),

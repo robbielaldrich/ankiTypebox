@@ -7,7 +7,7 @@ from aqt import gui_hooks
 from aqt import mw
 
 Reviewer.typeboxAnsPat = r"\[\[typebox:(.*?)\]\]"
-
+Reviewer.newline_marker = "__typeboxnewline__"
 
 def typeboxAnsFilter(self, buf: str) -> str:
 	# replace the typebox pattern for questions, and if question has typebox,
@@ -42,12 +42,12 @@ def _set_font_details_from_card(reviewer, style, selector):
 
 
 def typeboxAnsQuestionFilter(self, buf: str) -> str:
+	self.typeCorrect = None
 	m = re.search(self.typeboxAnsPat, buf)
 	if not m:
 		return buf
 	fld = m.group(1)
 	# loop through fields for a match
-	self.typeCorrect = None
 	fields = self.card.model()["flds"]
 	for f in fields:
 		if f["name"] == fld:
@@ -85,30 +85,30 @@ function typeboxAns() {
 		buf,
 		)
 
-
 def typeboxAnsAnswerFilter(self, buf: str) -> str:
+	if not self.typeCorrect:
+		return re.sub(self.typeboxAnsPat, "", buf)
+
 	origSize = len(buf)
 	buf = buf.replace("<hr id=answer>", "")
 	hadHR = len(buf) != origSize
 
-	given = self.typedAnswer
-
-	if self.typeCorrect:
-		# compare with typed answer
-		# before stripping anki's added html, add newline markers to preserve format
-		cor = self.mw.col.media.strip(self.typeCorrect)
-		newline_marker = "__typeboxnewline__"
-		cor = re.sub(r"(<div><br>|<br>)", newline_marker, cor)
-		cor = re.sub(r"(<div>)+", newline_marker, cor)
-		cor = re.sub(r"(\r\n|\n)", newline_marker, cor)
-		cor = stripHTML(cor)
-		cor = html.unescape(cor)
-		cor = cor.replace("\xa0", " ")
-		cor = cor.replace(newline_marker, "\n")
-		cor = cor.strip()
-		res = self.correct(given, cor, showBad=False)
-	else:
-		res = self.typedAnswer
+	# Compare answers -- replace line markup/chars with newline markers to
+	# preserve line breaks during compare.
+	# - `compare_answer` strips newlines from `expected`.
+	#   - Source: https://github.com/ankitects/anki/blob/ded805b5046e2df849103022747b94ce289bed46/rslib/src/typeanswer.rs#L106
+	provided = re.sub(r"\n", self.newline_marker, self.typedAnswer)
+	expected = self.mw.col.media.strip(self.typeCorrect)
+	expected = re.sub(r"(<div><br>|<br>)", self.newline_marker, expected)
+	expected = re.sub(r"(<div>)+", self.newline_marker, expected)
+	expected = re.sub(r"(\r\n|\n)", self.newline_marker, expected)
+	expected = stripHTML(expected)
+	expected = html.unescape(expected)
+	expected = expected.replace("\xa0", " ")
+	expected = expected.strip()
+	output = self.mw.col.compare_answer(expected, provided)
+	# Restore line breaks to comparison result:
+	output = output.replace(self.newline_marker, "<br>")
 
 	# and update the type answer area
 	if self.card.model()["css"] and self.card.model()["css"].strip():
@@ -131,14 +131,13 @@ pre {
 """ % (
 		font_family,
 		font_size,
-		res,
+		output,
 	)
 	if hadHR:
 		# a hack to ensure the q/a separator falls before the answer
 		# comparison when user is using {{FrontSide}}
-		s = "<hr id=answer>" + s
-	return re.sub(self.typeboxAnsPat, s, buf)
-
+		s = f"<hr id=answer>{s}"
+	return re.sub(self.typeboxAnsPat, s.replace('\\', r'\\'), buf)
 
 def focusTypebox(card):
     """

@@ -7,7 +7,7 @@ from aqt import gui_hooks
 from aqt import mw
 
 Reviewer.typeboxAnsPat = r"\[\[typebox:(.*?)\]\]"
-Reviewer.newline_marker = "__typeboxnewline__"
+Reviewer.newline_placeholder = "__typeboxnewline__"
 
 def typeboxAnsFilter(self, buf: str) -> str:
 	# replace the typebox pattern for questions, and if question has typebox,
@@ -97,18 +97,23 @@ def typeboxAnsAnswerFilter(self, buf: str) -> str:
 	# preserve line breaks during compare.
 	# - `compare_answer` strips newlines from `expected`.
 	#   - Source: https://github.com/ankitects/anki/blob/ded805b5046e2df849103022747b94ce289bed46/rslib/src/typeanswer.rs#L106
-	provided = re.sub(r"\n", self.newline_marker, self.typedAnswer)
+
+	provided = re.sub(r"(\r\n)", "\n", self.typedAnswer)
 	expected = self.mw.col.media.strip(self.typeCorrect)
-	expected = re.sub(r"(<div><br>|<br>)", self.newline_marker, expected)
-	expected = re.sub(r"(<div>)+", self.newline_marker, expected)
-	expected = re.sub(r"(\r\n|\n)", self.newline_marker, expected)
+	expected = re.sub(r"(<div><br>|<br>)", "\n", expected)
+	expected = re.sub(r"(<div>)+", "\n", expected)
+	expected = re.sub(r"(\r\n)", "\n", expected)
 	expected = stripHTML(expected)
 	expected = html.unescape(expected)
 	expected = expected.replace("\xa0", " ")
 	expected = expected.strip()
+	# Replace remaining "\n" chars with newline placeholder:
+	provided = re.sub(r"\n", self.newline_placeholder, provided)
+	expected = re.sub(r"\n", self.newline_placeholder, expected)
+	# Anki compare (backend):
 	output = self.mw.col.compare_answer(expected, provided)
 	# Restore line breaks to comparison result:
-	output = output.replace(self.newline_marker, "<br>")
+	output = output.replace(self.newline_placeholder, "<br>")
 
 	# and update the type answer area
 	if self.card.model()["css"] and self.card.model()["css"].strip():
